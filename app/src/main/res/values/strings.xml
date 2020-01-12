@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Retronebefits</string>
+    <string name="error">Unknown error</string>
+    <string name="total_time">It took {x} ms, to get here.</string>
+</resources>
