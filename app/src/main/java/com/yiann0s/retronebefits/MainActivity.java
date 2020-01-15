@@ -8,10 +8,10 @@ import android.os.SystemClock;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.yiann0s.retronebefits.model.Car;
-import com.yiann0s.retronebefits.model.Dog;
 import com.yiann0s.retronebefits.utils.Service;
 
 import org.json.JSONException;
@@ -24,14 +24,11 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
-import java.net.ProtocolException;
 import java.net.URL;
-import java.net.URLConnection;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
 import okhttp3.OkHttpClient;
-import okhttp3.Request;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
@@ -45,24 +42,28 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     private final String TAG = "TEST.MainActivity";
 
+    private TextView retrofitResultText, asyncTaskResultText;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        findViewById(R.id.async_button).setOnClickListener(this);
-        findViewById(R.id.retro_button).setOnClickListener(this);
+        findViewById(R.id.start_button).setOnClickListener(this);
+
+        retrofitResultText = findViewById(R.id.retrofit_result);
+        asyncTaskResultText = findViewById(R.id.asynctask_result);
 
     }
 
     @Override
     public void onClick(View v) {
         switch (v.getId()){
-            case R.id.async_button:
-                asyncTask();
-                break;
-            case R.id.retro_button:
+            case R.id.start_button:
                 retrofit();
+                asyncTask();
+                retrofitResultText.setVisibility(View.VISIBLE);
+                asyncTaskResultText.setVisibility(View.VISIBLE);
                 break;
             default:
                 Toast.makeText(this,getString(R.string.error),Toast.LENGTH_SHORT).show();
@@ -78,11 +79,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-        JSONObject obj = null;
         try {
-            obj = new JSONObject(rr);
-            String error = obj.getString("status");
-            String message = obj.getString("message");
+            JSONObject obj = new JSONObject(rr);
         } catch (JSONException e) {
             e.printStackTrace();
         }
@@ -133,7 +131,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             super.onPostExecute(s);
 
             endTime = SystemClock.elapsedRealtime();
-            showTime(startTime,endTime);
+            asyncTaskResultText.setText(getString(R.string.time).replace("{x}",String.valueOf(endTime-startTime)).replace("{y}","AsyncTask"));
         }
     }
 
@@ -164,7 +162,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             public void onResponse(Call<List<Car>> call, Response<List<Car>> response) {
                 if (response.isSuccessful() && response.body() != null ){
                     endTime = SystemClock.elapsedRealtime();
-                    showTime(startTime,endTime);
+//                    showTime(startTime,endTime);
+                    retrofitResultText.setText(getString(R.string.time).replace("{x}",String.valueOf(endTime-startTime)).replace("{y}","Retrofit"));
                 } else {
                     Log.d(TAG, "onResponse: reponse body isEmpty :" + (TextUtils.isEmpty(response.toString())));
                     Toast.makeText(MainActivity.this,"Retrofiit:"+getString(R.string.error),Toast.LENGTH_SHORT).show();
@@ -183,8 +182,4 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         });
     }
 
-    private void showTime(long t1, long t2){
-        long diffTime = t2 - t1;
-        Toast.makeText(MainActivity.this,getString(R.string.total_time).replace("{x}",String.valueOf(diffTime)),Toast.LENGTH_SHORT).show();
-    }
 }

@@ -6,28 +6,32 @@
     android:layout_height="match_parent"
     android:background="@color/colorAccent"
     android:gravity="center"
+    android:orientation="vertical"
     tools:context=".MainActivity">
-
-    <Button
-        android:id="@+id/async_button"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_weight="0.5"
-        android:textAllCaps="false"
-        android:layout_margin="10dp"
-        android:background="@drawable/button_shape"
-        android:textColor="@color/colorAccent"
-        android:text="AsyncTask" />
-
-    <Button
-        android:id="@+id/retro_button"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_weight="0.5"
-        android:layout_margin="10dp"
-        android:textAllCaps="false"
-        android:background="@drawable/button_shape"
-        android:textColor="@color/colorAccent"
-        android:text="Retrofit" />
-
+        <Button
+            android:id="@+id/start_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textAllCaps="false"
+            android:background="@drawable/shape"
+            android:textColor="@color/black"
+            android:text="Start" />
+        <TextView
+            android:id="@+id/retrofit_result"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/time"
+            android:gravity="center"
+            android:textColor="@color/complementaryGreen"
+            android:textSize="35sp"
+            android:visibility="invisible"/>
+        <TextView
+            android:id="@+id/asynctask_result"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/time"
+            android:textColor="@color/complementaryGreen"
+            android:gravity="center"
+            android:textSize="35sp"
+            android:visibility="invisible"/>
 </LinearLayout>

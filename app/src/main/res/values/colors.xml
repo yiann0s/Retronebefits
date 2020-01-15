@@ -6,4 +6,5 @@
     <color name="triadicYellow">#ffba24</color>
     <color name="triadicBLue">#24ffba</color>
     <color name="complementaryGreen">#69ff24</color>
+    <color name="black">#000000</color>
 </resources>
