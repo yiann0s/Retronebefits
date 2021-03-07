@@ -8,6 +8,7 @@ import android.os.SystemClock;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -22,6 +23,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.lang.ref.WeakReference;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -44,12 +46,16 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     private TextView retrofitResultText, asyncTaskResultText;
 
+    private ProgressBar progressBar;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
         findViewById(R.id.start_button).setOnClickListener(this);
+
+        progressBar = findViewById(R.id.progress_bar);
 
         retrofitResultText = findViewById(R.id.retrofit_result);
         asyncTaskResultText = findViewById(R.id.asynctask_result);
@@ -60,7 +66,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     public void onClick(View v) {
         switch (v.getId()){
             case R.id.start_button:
-                retrofit();
+                retrofit(this);
                 asyncTask();
                 retrofitResultText.setVisibility(View.VISIBLE);
                 asyncTaskResultText.setVisibility(View.VISIBLE);
@@ -71,9 +77,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     public void asyncTask(){
+        MyAsyncTask task = new MyAsyncTask(this);
+
         String rr = "";
         try {
-            rr = new MyAsyncTasks().execute().get();
+            rr = task.execute().get();
         } catch (ExecutionException e) {
             e.printStackTrace();
         } catch (InterruptedException e) {
@@ -88,16 +96,38 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
 
-    public class MyAsyncTasks extends AsyncTask<String, Void, String> {
+    private static class MyAsyncTask extends AsyncTask<String, Void, String> {
+
+        //weak reference in the class scope
+        private WeakReference<MainActivity> activityWeakReference;
+
+        public MyAsyncTask(MainActivity activity) {
+            activityWeakReference = new WeakReference<MainActivity>(activity);
+        }
 
         @Override
         protected void onPreExecute() {
             super.onPreExecute();
-            startTime = SystemClock.elapsedRealtime();
+
+            //strong reference in method scope
+            MainActivity activity = activityWeakReference.get();
+            if ((activity == null) || (activity.isFinishing())) {
+                return;
+            }
+
+            activity.startTime = SystemClock.elapsedRealtime();
+
+            activity.progressBar.setVisibility(View.VISIBLE);
         }
 
         @Override
         protected String doInBackground(String... params) {
+            //strong reference in method scope
+            MainActivity activity = activityWeakReference.get();
+            if ((activity == null) || (activity.isFinishing())) {
+                return "";
+            }
+
             HttpURLConnection urlConnection = null;
             String result = "";
             try {
@@ -109,6 +139,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     if (in != null) {
                         BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(in));
                         String line = "";
+
+                        activity.addDelay(4000);
 
                         while ((line = bufferedReader.readLine()) != null)
                             result += line;
@@ -130,12 +162,30 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         protected void onPostExecute(String s) {
             super.onPostExecute(s);
 
-            endTime = SystemClock.elapsedRealtime();
-            asyncTaskResultText.setText(getString(R.string.time).replace("{x}",String.valueOf(endTime-startTime)).replace("{y}","AsyncTask"));
+            //strong reference in method scope
+            MainActivity activity = activityWeakReference.get();
+            if ((activity == null) || (activity.isFinishing())) {
+                return;
+            }
+
+            activity.endTime = SystemClock.elapsedRealtime();
+            activity.asyncTaskResultText.setText(activity.getResources().getString(R.string.time).replace("{x}",String.valueOf(activity.endTime-activity.startTime)).replace("{y}","AsyncTask"));
+            activity.progressBar.setVisibility(View.INVISIBLE);
         }
     }
 
-    public void retrofit(){
+    private void addDelay(long delay){
+        try {
+            Thread.sleep(delay);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+            Log.e(TAG, "addDelay: exception " + e.getMessage());
+        }
+    }
+
+    public void retrofit(MainActivity activity){
+        //weak reference in the class scope
+        WeakReference<MainActivity> activityWeakReference = new WeakReference<MainActivity>(activity);
 
         OkHttpClient.Builder httpClient = new OkHttpClient.Builder();
 
@@ -154,25 +204,38 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         )
                         .build();
 
-        startTime= SystemClock.elapsedRealtime();
+        //is this good ???
+        activityWeakReference.get().startTime= SystemClock.elapsedRealtime();
         Service service = retrofit.create(Service.class);
         Call<List<Car>> carList = service.getJson();
         carList.enqueue(new Callback<List<Car>>() {
             @Override
             public void onResponse(Call<List<Car>> call, Response<List<Car>> response) {
+                //strong reference in method scope
+                MainActivity activity = activityWeakReference.get();
+                if ((activity == null) || (activity.isFinishing())) {
+                    return;
+                }
+
                 if (response.isSuccessful() && response.body() != null ){
-                    endTime = SystemClock.elapsedRealtime();
-//                    showTime(startTime,endTime);
-                    retrofitResultText.setText(getString(R.string.time).replace("{x}",String.valueOf(endTime-startTime)).replace("{y}","Retrofit"));
+
+                    activity.endTime = SystemClock.elapsedRealtime();
+                    activity.retrofitResultText.setText(activity.getResources().getString(R.string.time).replace("{x}",String.valueOf(activity.endTime-activity.startTime)).replace("{y}","Retrofit"));
                 } else {
                     Log.d(TAG, "onResponse: reponse body isEmpty :" + (TextUtils.isEmpty(response.toString())));
-                    Toast.makeText(MainActivity.this,"Retrofiit:"+getString(R.string.error),Toast.LENGTH_SHORT).show();
+                    Toast.makeText(activity,"Retrofiit:"+activity.getResources().getString(R.string.error),Toast.LENGTH_SHORT).show();
                 }
             }
 
             @Override
             public void onFailure(Call<List<Car>> call, Throwable t) {
-                Toast.makeText(MainActivity.this,"Exception: " + t.getMessage(),Toast.LENGTH_SHORT).show();
+                //strong reference in method scope
+                MainActivity activity = activityWeakReference.get();
+                if ((activity == null) || (activity.isFinishing())) {
+                    return;
+                }
+
+                Toast.makeText(activity,"Exception: " + t.getMessage(),Toast.LENGTH_SHORT).show();
                 if (t instanceof IOException) {
                     Log.d(TAG, "this is an actual network failure :( inform the user and possibly retry");
                 } else {
